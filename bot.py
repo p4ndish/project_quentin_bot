@@ -121,12 +121,25 @@ def modify_text(text, fallback_entry=2.5):  # Optional fallback if no entry pric
             target_number = i
             new_target_price = modified_entry * multiplier
             
-            # Pattern to match TargetN: followed by a number (with optional emoji or formatting)
-            # This handles various formats like "Target1: 1.234", "🎯Target1: 1.234", etc.
-            pattern = rf'(Target{target_number}:\s*)(\d+\.?\d*)'
+            # Pattern to match TargetN: followed by anything (number, emoji, or text)
+            # This handles various formats like "Target1: 1.234", "Target7: 🚀🚀🚀", etc.
+            pattern = rf'(✅Target{target_number}:\s*)([^\n]+)'
             replacement = rf'\g<1>{new_target_price:.6f}'
             
-            modified_text = re.sub(pattern, replacement, modified_text, flags=re.IGNORECASE)
+            # Check if target exists in the text
+            if re.search(pattern, modified_text, flags=re.IGNORECASE):
+                modified_text = re.sub(pattern, replacement, modified_text, flags=re.IGNORECASE)
+            else:
+                # If target doesn't exist, add it before the Stop Loss line
+                target_line = f'\n✅Target{target_number}: {new_target_price:.6f}'
+                # Insert before Stop Loss
+                stop_loss_pattern = r'(⛔Stop Loss:)'
+                if re.search(stop_loss_pattern, modified_text):
+                    modified_text = re.sub(stop_loss_pattern, target_line + r'\n\n\g<1>', modified_text)
+                else:
+                    # If no Stop Loss found, append at the end
+                    modified_text += target_line
+            
             logger.debug(f"Modified Target{target_number}: {new_target_price:.6f} (multiplier: {multiplier})")
     
     return modified_text
